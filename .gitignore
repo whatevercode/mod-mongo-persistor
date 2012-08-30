@@ -1,3 +1,9 @@
+.classpath
+.gradle
 .idea
-mod-mongo-persistor.iml
+.project
+.settings
+module.iml
+bin
+build
 out

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-load('javascript/test_utils.js')
+load('test_utils.js')
 load('vertx.js')
 
 var tu = new TestUtils();
@@ -306,7 +306,7 @@ function testDelete() {
 
 tu.registerTests(this);
 var persistorConfig = {address: 'test.persistor', db_name: 'test_db'}
-vertx.deployModule('mongo-persistor-v1.0', persistorConfig, 1, function() {
+vertx.deployModule('vertx.mongo-persistor-v' + java.lang.System.getProperty('vertx.version'), persistorConfig, 1, function() {
   deleteAll();
   tu.appReady();
 });
