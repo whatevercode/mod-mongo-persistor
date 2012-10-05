@@ -154,6 +154,8 @@ To find documents send a JSON message to the module main address:
         "action": "find",
         "collection": <collection>,
         "matcher": <matcher>,
+        "keys": <keys>,
+        "skip": <offset>,
         "limit": <limit>,
         "batch_size": <batch_size>
     }     
@@ -161,6 +163,8 @@ To find documents send a JSON message to the module main address:
 Where:
 * `collection` is the name of the MongoDB collection that you wish to search in in. This field is mandatory.
 * `matcher` is a JSON object that you want to match against to find matching documents. This obeys the normal MongoDB matching rues.
+* `keys` is an optional JSON object that contains the fields that should be returned for matched documents. See MongoDB manual for more information. Example: { "name": 1 } will only return objects with _id and the name field
+* `skip` is a number which determines the number of documents to skip. This is optional. By default no documents are skipped.
 * `limit` is a number which determines the maximum total number of documents to return. This is optional. By default all documents are returned.
 * `batch_size` is a number which determines how many documents to return in each reply JSON message. It's optional and the default value is `100`. Batching is discussed in more detail below.
 
@@ -213,7 +217,44 @@ If an error occurs in finding the documents a reply is returned:
         "message": <message>
     }
     
-Where `message` is an error message. 
+Where `message` is an error message.
+
+If you would like to paginate your result :
+
+    {
+        "action": "find",
+        "collection": "orders",
+        "skip"  : 10,
+        "limit" : 10,
+        "matcher": {}
+    }
+
+You decide to display 10 documents per page.
+This message will retrieve second page.
+
+Equivalence in mongoDB:
+
+db.order.find().skip(10).limit(10)
+
+### Count
+
+Count all matching document in the database.
+
+To count a document send a JSON message to the module main address:
+
+    {
+        "action": "count",
+        "collection": <collection>,
+        "matcher": <matcher>
+    }
+
+When the count complete successfully, a reply message is sent back to the sender with the following data:
+
+    {
+         "status": "ok",
+         "count" : <number>
+    }
+
 
 #### Batching
 
@@ -261,12 +302,14 @@ To find a document send a JSON message to the module main address:
     {
         "action": "findone",
         "collection": <collection>,
-        "matcher": <matcher>
+        "matcher": <matcher>,
+        "keys": <keys>
     }     
     
 Where:
 * `collection` is the name of the MongoDB collection that you wish to search in in. This field is mandatory.
 * `matcher` is a JSON object that you want to match against to find a matching document. This obeys the normal MongoDB matching rues.
+* `keys` is an optional JSON object that contains the fields that should be returned for matched documents. See MongoDB manual for more information. Example: { "name": 1 } will only return objects with _id and the name field
 
 If more than one document matches, just the first one will be returned.
 

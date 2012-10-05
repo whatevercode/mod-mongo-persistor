@@ -16,6 +16,7 @@
 
 package org.vertx.mods;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.CommandResult;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
@@ -103,6 +104,9 @@ public class MongoPersistor extends BusModBase implements Handler<Message<JsonOb
       case "delete":
         doDelete(message);
         break;
+      case "count":
+        doCount(message);
+        break;
       case "getCollections":
         getCollections(message);
         break;
@@ -110,7 +114,7 @@ public class MongoPersistor extends BusModBase implements Handler<Message<JsonOb
         getCollectionStats(message);
         break;
       case "command":
-        runCommand(message);  
+        runCommand(message);
       default:
         sendError(message, "Invalid action: " + action);
         return;
@@ -187,6 +191,11 @@ public class MongoPersistor extends BusModBase implements Handler<Message<JsonOb
     if (limit == null) {
       limit = -1;
     }
+    Integer skip = (Integer)message.body.getNumber("skip");
+    if(skip == null) {
+      skip = -1;
+    }
+
     Integer batchSize = (Integer)message.body.getNumber("batch_size");
     if (batchSize == null) {
       batchSize = 100;
@@ -195,16 +204,45 @@ public class MongoPersistor extends BusModBase implements Handler<Message<JsonOb
     if (matcher == null) {
       return;
     }
-    JsonObject sort = message.body.getObject("sort");
+    JsonObject keys = message.body.getObject("keys");
+    
+    Object sort = message.body.getField("sort");
     DBCollection coll = db.getCollection(collection);
-    DBCursor cursor = coll.find(jsonToDBObject(matcher));
+    DBCursor cursor = (keys == null) ? 
+    			coll.find(jsonToDBObject(matcher)) : 
+    			coll.find(jsonToDBObject(matcher), jsonToDBObject(keys));
+    if(skip != -1) {
+        cursor.skip(skip);
+    }
     if (limit != -1) {
       cursor.limit(limit);
     }
     if (sort != null) {
-      cursor.sort(jsonToDBObject(sort));
+      cursor.sort(sortObjectToDBObject(sort));
     }
     sendBatch(message, cursor, batchSize);
+  }
+
+  private DBObject sortObjectToDBObject(Object sortObj) {
+    if (sortObj instanceof JsonObject) {
+      // Backwards compatability and a simpler syntax for single-property sorting
+      return jsonToDBObject((JsonObject) sortObj);
+    } else if (sortObj instanceof JsonArray) {
+      JsonArray sortJsonObjects = (JsonArray) sortObj;
+      DBObject sortDBObject = new BasicDBObject();
+      for (Object curSortObj : sortJsonObjects) {
+        if (!(curSortObj instanceof JsonObject)) {
+          throw new IllegalArgumentException("Cannot handle type "
+              + curSortObj.getClass().getSimpleName());
+        }
+
+        sortDBObject.putAll(((JsonObject) curSortObj).toMap());
+      }
+
+      return sortDBObject;
+    } else {
+      throw new IllegalArgumentException("Cannot handle type " + sortObj.getClass().getSimpleName());
+    }
   }
 
   private void sendBatch(Message<JsonObject> message, final DBCursor cursor, final int max) {
@@ -268,12 +306,13 @@ public class MongoPersistor extends BusModBase implements Handler<Message<JsonOb
       return;
     }
     JsonObject matcher = message.body.getObject("matcher");
+    JsonObject keys = message.body.getObject("keys");
     DBCollection coll = db.getCollection(collection);
     DBObject res;
     if (matcher == null) {
-      res = coll.findOne();
+      res = keys != null ? coll.findOne(null, jsonToDBObject(keys)) : coll.findOne();
     } else {
-      res = coll.findOne(jsonToDBObject(matcher));
+      res = keys != null ? coll.findOne(jsonToDBObject(matcher), jsonToDBObject(keys)) : coll.findOne(jsonToDBObject(matcher));
     }
     JsonObject reply = new JsonObject();
     if (res != null) {
@@ -283,6 +322,24 @@ public class MongoPersistor extends BusModBase implements Handler<Message<JsonOb
     }
     sendOK(message, reply);
   }
+
+    private void doCount(Message<JsonObject> message) {
+        String collection = getMandatoryString("collection", message);
+        if (collection == null) {
+            return;
+        }
+        JsonObject matcher = message.body.getObject("matcher");
+        DBCollection coll = db.getCollection(collection);
+        long count;
+        if (matcher == null) {
+            count = coll.count();
+        } else {
+            count = coll.count(jsonToDBObject(matcher));
+        }
+        JsonObject reply = new JsonObject();
+        reply.putNumber("count", count);
+        sendOK(message, reply);
+    }
 
   private void doDelete(Message<JsonObject> message) {
     String collection = getMandatoryString("collection", message);

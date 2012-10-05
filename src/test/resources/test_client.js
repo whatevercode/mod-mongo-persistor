@@ -180,6 +180,38 @@ function testFindWithLimit() {
   });
 }
 
+function testFindWithSkipAndLimit() {
+
+  var num = 20;
+
+  var skip = 10;
+  var limit = 12;
+
+  for (var i = 0; i < num; i++) {
+    eb.send('test.persistor', {
+      collection: 'testcoll',
+      action: 'save',
+      document: {
+        name: 'tim' + i
+      }
+    }, function(reply) {
+      tu.azzert(reply.status === 'ok');
+    });
+  }
+
+  eb.send('test.persistor', {
+    collection: 'testcoll',
+    action: 'find',
+    skip: skip,
+    limit: limit,
+    matcher: {}
+  }, function(reply) {
+    tu.azzert(reply.status === 'ok');
+    tu.azzert(reply.results.length === 10);
+    tu.testComplete();
+  });
+}
+
 function testFindWithSort() {
 
   var num = 10;
@@ -214,6 +246,56 @@ function testFindWithSort() {
     tu.testComplete();
   });
 }
+
+function testFindWithKeys() {
+	
+    eb.send('test.persistor', {
+      collection: 'testcoll',
+      action: 'save',
+      document: {
+        name: 'tim',
+        age: Math.floor(Math.random()*11)
+      }
+    }, function(reply) {
+      tu.azzert(reply.status === 'ok');
+    });
+  
+
+  eb.send('test.persistor', {
+    collection: 'testcoll',
+    action: 'findone',
+    // matcher: {name: 'tim'},
+    keys: { name: 1},
+    sort: {age: 1}
+  }, function(reply) {
+    tu.azzert(reply.status === 'ok');
+    tu.azzert(!reply.result.age);
+  });
+
+  eb.send('test.persistor', {
+    collection: 'testcoll',
+    action: 'findone',
+    matcher: {name: 'tim'},
+    keys: { name: 1},
+    sort: {age: 1}
+  }, function(reply) {
+    tu.azzert(reply.status === 'ok');
+    tu.azzert(!reply.result.age);
+  });
+
+  eb.send('test.persistor', {
+    collection: 'testcoll',
+    action: 'find',
+    matcher: {name: 'tim'},
+    keys: { name: 1},
+    sort: {age: 1}
+  }, function(reply) {
+    tu.azzert(reply.status === 'ok');
+    tu.azzert(!reply.results[0].age);
+    tu.testComplete();
+  });
+}
+
 
 function testFindBatched() {
 
@@ -301,6 +383,34 @@ function testDelete() {
 
       tu.testComplete();
     });
+  });
+}
+
+function testCount() {
+
+  var num = 10;
+
+  for (var i = 0; i < num; i++) {
+    eb.send('test.persistor', {
+      collection: 'testcoll',
+      action: 'save',
+      document: {
+        name: 'tim',
+        age: Math.floor(Math.random()*11)
+      }
+    }, function(reply) {
+      tu.azzert(reply.status === 'ok');
+    });
+  }
+
+  eb.send('test.persistor', {
+    collection: 'testcoll',
+    action: 'count',
+    matcher: {}
+  }, function(reply) {
+    tu.azzert(reply.status === 'ok');
+    tu.azzert(reply.count === num);
+    tu.testComplete();
   });
 }
 
