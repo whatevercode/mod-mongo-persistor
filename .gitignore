@@ -3,6 +3,7 @@
 .idea
 .project
 .settings
+.iml
 module.iml
 bin
 build
