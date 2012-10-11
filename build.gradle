@@ -55,8 +55,6 @@ sourceSets {
 
 task copyMod( type:Copy, dependsOn: 'classes' ) {
   into "build/mod/$modulename-v$version"
-  //into "/home/flo/dev/tacklvertx/mods/$modulename-v$version"
-
   from 'build/classes/main'
   from 'src/main/conf'
   into( 'lib' ) {
