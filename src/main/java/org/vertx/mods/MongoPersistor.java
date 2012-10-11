@@ -23,6 +23,7 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.Mongo;
+import com.mongodb.ServerAddress;
 import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 import org.vertx.java.busmods.BusModBase;
@@ -32,6 +33,7 @@ import org.vertx.java.core.json.JsonArray;
 import org.vertx.java.core.json.JsonObject;
 
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.UUID;
 
 /**
@@ -49,6 +51,7 @@ public class MongoPersistor extends BusModBase implements Handler<Message<JsonOb
   private String dbName;
   private String username;
   private String password;
+  private JsonArray hosts;
 
   private Mongo mongo;
   private DB db;
@@ -62,9 +65,20 @@ public class MongoPersistor extends BusModBase implements Handler<Message<JsonOb
     dbName = getOptionalStringConfig("db_name", "default_db");
     username = getOptionalStringConfig("username", null);
     password = getOptionalStringConfig("password", null);
+    hosts = getOptionalArrayConfig("hosts", null);
 
     try {
-      mongo = new Mongo(host, port);
+      ArrayList<ServerAddress> seeds = new ArrayList<>();
+      if (hosts != null) {
+        for (Object hostItem : hosts) {
+          JsonObject hi = (JsonObject) hostItem;
+          seeds.add(new ServerAddress(hi.getString("host"), (int) hi
+              .getField("port")));
+        }
+        mongo = new Mongo(seeds);
+      } else {
+        mongo = new Mongo(host, port);
+      }
       db = mongo.getDB(dbName);
       if (username != null && password != null) {
         db.authenticate(username, password.toCharArray());
